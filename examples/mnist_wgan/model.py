@@ -12,25 +12,21 @@ class Reshape(nn.Module):
     def forward(self, x):
         return x.view(*self.shape)
 
-
 class Generator(nn.Module):
     def __init__(self):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
             Reshape(-1, 1, 7, 7),
-            nn.ConvTranspose2d(1, 1024, 5, stride=2,
-                               padding=2, output_padding=1),
+            nn.ConvTranspose2d(1, 1024, 5, stride=2, padding=2, output_padding=1),
             nn.InstanceNorm2d(1024, affine=True),
             nn.ReLU(),
-            nn.ConvTranspose2d(1024, 1, 5, stride=2,
-                               padding=2, output_padding=1),
+            nn.ConvTranspose2d(1024, 1, 5, stride=2, padding=2, output_padding=1),
             nn.InstanceNorm2d(1, affine=True),
             nn.Tanh()
         )
 
     def forward(self, x):
         return self.main(x)
-
 
 class Discriminator(nn.Module):
     def __init__(self):
@@ -48,10 +44,3 @@ class Discriminator(nn.Module):
 
     def forward(self, x):
         return self.main(x)
-
-
-x = Variable(torch.Tensor(64, 49))
-g = Generator()
-d = Discriminator()
-print(g(x))
-print(d(g(x)))
