@@ -22,23 +22,26 @@ optimizer_g = torch.optim.RMSprop(g.parameters(), lr=learning_rate)
 optimizer_d = torch.optim.RMSprop(d.parameters(), lr=learning_rate)
 
 
+num_critic = 10
 def train(epoch):
     for _, (real_x, _) in enumerate(train_loader):
         # train d
         real_x = Variable(real_x)
-        z = Variable(torch.randn(batch_size, 7*7))
+        for _ in range(num_critic):
 
-        fake_x = g(z)
-        loss_d = -d(real_x).mean() + d(fake_x).mean()
+            z = Variable(torch.randn(batch_size, 7*7))
+            fake_x = g(z)
+            loss_d = -d(real_x).mean() + d(fake_x).mean()
 
-        optimizer_d.zero_grad()
-        loss_d.backward()
-        # clip
-        for p in d.parameters():
-            p.grad.data.clamp_(-0.01, 0.01)
-        optimizer_d.step()
+            optimizer_d.zero_grad()
+            loss_d.backward()
+            # clip
+            for p in d.parameters():
+                p.data.clamp_(-0.01, 0.01)
+            optimizer_d.step()
 
         # train g
+        z = Variable(torch.randn(batch_size, 7*7))
         fake_x = g(z)
         loss_g = -d(fake_x).mean()
 
