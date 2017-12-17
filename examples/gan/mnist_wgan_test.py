@@ -7,6 +7,7 @@ import torchvision
 from torch import nn
 from torch.autograd import Variable
 from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', '-bs', type=int, default=64)
@@ -47,28 +48,39 @@ class Discriminator(nn.Module):
         output = self.linear(input_.view(-1, args.size**2))
         return output
 
+
+def _var_to_numpy(x):
+    return x.cpu().data.numpy()
+
 transform = transforms.Compose([
     transforms.Resize(args.size),
     transforms.ToTensor(),
     transforms.Normalize((0.1307,), (0.3081,))
 ])
+dataset = datasets.MNIST('../data', train=True, transform=transform, download=True)
 
-dataloader = torch.utils.data.DataLoader(datasets.MNIST(
-    '../data', train=True, transform=transform, download=True), batch_size=args.batch_size, shuffle=True)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
-g = Generator(1000)
-d = Discriminator(1000)
-g.cuda()
-d.cuda()
+g = Generator(200)
+d = Discriminator(200)
+
+if torch.cuda.is_available():
+    g.cuda()
+    d.cuda()
 
 optimizer_d = torch.optim.RMSprop(d.parameters(), lr=args.learning_rate)
 optimizer_g = torch.optim.RMSprop(g.parameters(), lr=args.learning_rate)
 
+logs = {'loss_d':[], 'loss_g':[]}
 
 def train(epoch=0):
     for i, (x, _) in enumerate(dataloader):
-        x = Variable(x).cuda()
-        z = Variable(torch.randn(x.data.size()[0], 100)).cuda()
+        x = Variable(x)
+        z = Variable(torch.randn(x.data.size()[0], 100))
+
+        if torch.cuda.is_available():
+            x = x.cuda()
+            z = z.cuda()
 
         loss_d = -d(x).mean() + d(g(z)).mean()
         optimizer_d.zero_grad()
@@ -82,14 +94,25 @@ def train(epoch=0):
         loss_g.backward()
         optimizer_g.step()
 
+        logs['loss_d'].append(_var_to_numpy(loss_d))
+        logs['loss_g'].append(_var_to_numpy(loss_g))
+
+
         if i % 100 == 0:
             print('Epoch {}, step: {}, loss_d: {}, loss_g: {}'.format(
-                epoch, i, loss_d.cpu().data.numpy(), loss_g.cpu().data.numpy()))
+                epoch, i,_var_to_numpy(loss_d), _var_to_numpy(loss_g)))
+
 
             os.makedirs(args.dir, exist_ok=True)
-            z = Variable(torch.randn(64, 100), volatile=True).cuda()
-            grid = torchvision.utils.make_grid((g(z).data + 1) / 2)
+            grid = torchvision.utils.make_grid((g(z).cpu().data + 1) / 2)
             torchvision.utils.save_image(grid, '{}/{}.jpg'.format(args.dir, i))
 
-for epoch in range(1000):
+
+for epoch in range(10):
     train(epoch)
+
+
+plt.plot(logs['loss_d'], label='loss_d')
+plt.plot(logs['loss_g'], label='loss_g')
+plt.legend()
+plt.savefig('loss.jpg')
