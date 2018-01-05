@@ -1,7 +1,8 @@
 import argparse
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
+from time import time
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -12,12 +13,12 @@ from utils import var_to_numpy
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=128)
+parser.add_argument('--parallel', action='store_true')
 args = parser.parse_args()
 
-
-class ConvNet(nn.Module):
+class Net(nn.Module):
     def __init__(self):
-        super(ConvNet, self).__init__()
+        super(Net, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(1, 32, 5, 1, 2),
             nn.BatchNorm2d(32),
@@ -51,15 +52,21 @@ transform = transforms.Compose([
 ])
 
 train_dataset = datasets.MNIST('../data', train=True, transform=transform, download=True)
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size)
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
 test_dataset = datasets.MNIST('../data', train=False, transform=transform, download=True)
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
 
-net = ConvNet()
+net = Net()
+if args.parallel:
+    print('Use data parallel.')
+    net = nn.DataParallel(net)
+
 if torch.cuda.is_available():
+    print('Use cuda.')
     net.cuda()
+
 
 optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
 losses = []
@@ -80,7 +87,8 @@ def train(epoch):
         loss.backward()
         optimizer.step()
 
-        losses.append(var_to_numpy(loss))
+        losses.append(float(var_to_numpy(loss)))
+
 
     acc = evaluation()
 
@@ -89,7 +97,7 @@ def train(epoch):
 
 
 def evaluation():
-    net.train(False)
+    net.eval()
 
     correct = 0
     for _, (batch_test_x , batch_test_y) in enumerate(test_loader):
@@ -103,8 +111,12 @@ def evaluation():
 
     return correct / len(test_dataset)
 
+start = time()
 for epoch in range(10):
     train(epoch)
+end = time()
 
-plt.plot(losses)
-plt.show()
+print('Time: {}'.format(end - start))
+
+#plt.plot(losses)
+#plt.show()
