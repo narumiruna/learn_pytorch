@@ -10,11 +10,12 @@ from torchvision import datasets, transforms
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--cuda', action='store_true')
+parser.add_argument('--parallel', action='store_true')
 args = parser.parse_args()
 
 args.cuda = args.cuda and torch.cuda.is_available()
-print(args)
 
+print(args)
 
 class Net(nn.Module):
     def __init__(self):
@@ -56,7 +57,6 @@ train_dataset = datasets.MNIST('../data',
                                download=True)
 train_loader = data.DataLoader(train_dataset,
                                batch_size=args.batch_size)
-
 test_dataset = datasets.MNIST('../data',
                               train=False,
                               transform=transform,
@@ -65,12 +65,15 @@ test_loader = data.DataLoader(test_dataset,
                               batch_size=args.batch_size)
 
 net = Net()
+
 if args.cuda:
     net.cuda()
 
+if args.parallel:
+    net = nn.DataParallel(net)
+
 optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
 cross_entropy = nn.CrossEntropyLoss()
-
 
 def train():
     net.train()
