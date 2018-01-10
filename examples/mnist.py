@@ -92,15 +92,8 @@ def train():
         optimizer.step()
         optimizer.zero_grad()
 
-<<<<<<< HEAD
         if train_index % args.log_interval == 0:
             print('Batch index {}, loss: {}'.format(train_index, float(loss.data)))
-=======
-        losses.append(loss.data)
-
-    return torch.cat(losses)
-
->>>>>>> ced2a5b1722bdab5177247464c554fb8c2a2528d
 
 def evaluate():
     net.eval()
