@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--cuda', action='store_true')
 parser.add_argument('--parallel', action='store_true')
+parser.add_argument('--log_interval', type=int, default=100)
 args = parser.parse_args()
 
 args.cuda = args.cuda and torch.cuda.is_available()
@@ -51,18 +52,18 @@ transform = transforms.Compose([
     transforms.Normalize((0.13066047740239478,), (0.3081078087569972,))
 ])
 
-train_dataset = datasets.MNIST('../data',
+train_dataset = datasets.MNIST('data',
                                train=True,
                                transform=transform,
                                download=True)
 train_loader = data.DataLoader(train_dataset,
-                               batch_size=args.batch_size)
-test_dataset = datasets.MNIST('../data',
+                               batch_size=args.batch_size, pin_memory=True)
+test_dataset = datasets.MNIST('data',
                               train=False,
                               transform=transform,
                               download=True)
 test_loader = data.DataLoader(test_dataset,
-                              batch_size=args.batch_size)
+                              batch_size=args.batch_size,pin_memory=True)
 
 net = Net()
 
@@ -77,9 +78,6 @@ cross_entropy = nn.CrossEntropyLoss()
 
 def train():
     net.train()
-
-    losses = []
-
     for train_index, (train_x, train_y) in enumerate(train_loader):
         train_x = Variable(train_x)
         train_y = Variable(train_y)
@@ -94,10 +92,8 @@ def train():
         optimizer.step()
         optimizer.zero_grad()
 
-        losses.append(loss)
-
-    return torch.cat(losses)
-
+        if train_index % args.log_interval == 0:
+            print('Batch index {}, loss: {}'.format(train_index, float(loss.data)))
 
 def evaluate():
     net.eval()
@@ -105,23 +101,20 @@ def evaluate():
     correct = 0
     for _, (test_x, test_y) in enumerate(test_loader):
         test_x = Variable(test_x, volatile=True)
-        test_y = Variable(test_y)
 
         if args.cuda:
             test_x = test_x.cuda()
             test_y = test_y.cuda()
 
-        _, max_indices = net(test_x).max(dim=1)
+        _, max_indices = net(test_x).data.max(dim=1)
         correct += int((max_indices == test_y).sum())
 
-    return correct / len(test_loader.dataset)
+    accuracy = correct / len(test_loader.dataset)
+
+    print('Accuracy: {}'.format(accuracy))
 
 
 for epoch in range(10):
-    losses = train()
-    train_avg_loss = float(losses.mean())
-    test_acc = evaluate()
-
-    print('Train epoch: {}, train avg loss: {}, test acc: {}'.format(epoch,
-                                                                     train_avg_loss,
-                                                                     test_acc))
+    print('Train epoch: {}'.format(epoch))
+    train()
+    evaluate()
