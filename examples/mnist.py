@@ -94,7 +94,7 @@ def train():
         optimizer.step()
         optimizer.zero_grad()
 
-        losses.append(loss)
+        losses.append(loss.data)
 
     return torch.cat(losses)
 
