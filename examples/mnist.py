@@ -57,13 +57,13 @@ train_dataset = datasets.MNIST('data',
                                transform=transform,
                                download=True)
 train_loader = data.DataLoader(train_dataset,
-                               batch_size=args.batch_size, pin_memory=True)
+                               batch_size=args.batch_size)
 test_dataset = datasets.MNIST('data',
                               train=False,
                               transform=transform,
                               download=True)
 test_loader = data.DataLoader(test_dataset,
-                              batch_size=args.batch_size,pin_memory=True)
+                              batch_size=args.batch_size)
 
 net = Net()
 
