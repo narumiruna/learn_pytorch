@@ -34,7 +34,6 @@ class Net(nn.Module):
 
         self.linear = nn.Sequential(
             nn.Linear(64 * 4 * 4, 1024),
-            nn.BatchNorm2d(1024),
             nn.ReLU(),
             nn.Dropout(),
             nn.Linear(1024, 10),
